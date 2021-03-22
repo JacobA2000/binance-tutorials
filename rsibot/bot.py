@@ -1,37 +1,48 @@
-import websocket, json, pprint, talib, numpy
+import websocket
+import json
+import pprint 
+import talib
+import numpy
+import requests
 import config
+import discord
+from datetime import datetime
 from binance.client import Client
 from binance.enums import *
 
-SOCKET = "wss://stream.binance.com:9443/ws/ethusdt@kline_1m"
+SOCKET = "wss://stream.binance.com:9443/ws/dogeusdt@kline_1m"
 
-RSI_PERIOD = 14
-RSI_OVERBOUGHT = 70
+RSI_PERIOD = 6
+RSI_OVERBOUGHT = 80
 RSI_OVERSOLD = 30
-TRADE_SYMBOL = 'ETHUSD'
-TRADE_QUANTITY = 0.05
+TRADE_SYMBOL = 'DOGEUSDT'
+TRADE_QUANTITY = 250
 
 closes = []
 in_position = False
 
-client = Client(config.API_KEY, config.API_SECRET, tld='us')
+client = Client(config.API_KEY, config.API_SECRET, tld='com')
 
 def order(side, quantity, symbol,order_type=ORDER_TYPE_MARKET):
     try:
         print("sending order")
+        discord.send_message(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Sending {side} order of {quantity} X {symbol}!")
         order = client.create_order(symbol=symbol, side=side, type=order_type, quantity=quantity)
         print(order)
+        discord.send_message(f"```json{json.dumps(order)}```")
     except Exception as e:
-        print("an exception occured - {}".format(e))
+        print(f"an exception occured - {e}")
+        discord.send_message(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Order Failed - an exception occured - {e}!")
         return False
 
     return True
-
     
 def on_open(ws):
+    discord.send_message(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Connection Opened!")
     print('opened connection')
 
 def on_close(ws):
+    discord.send_message(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Connection Closed!")
     print('closed connection')
 
 def on_message(ws, message):
@@ -47,7 +58,7 @@ def on_message(ws, message):
     close = candle['c']
 
     if is_candle_closed:
-        print("candle closed at {}".format(close))
+        print(f"candle closed at {close}")
         closes.append(float(close))
         print("closes")
         print(closes)
@@ -58,7 +69,7 @@ def on_message(ws, message):
             print("all rsis calculated so far")
             print(rsi)
             last_rsi = rsi[-1]
-            print("the current rsi is {}".format(last_rsi))
+            print(f"the current rsi is {last_rsi}")
 
             if last_rsi > RSI_OVERBOUGHT:
                 if in_position:
